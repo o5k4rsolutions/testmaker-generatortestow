@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generowanie testu – GPT-5</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 20px; }
+#app { max-width: 800px; margin: auto; background: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+button:hover { background: #0056b3; }
+textarea, select, input { width: 100%; margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+h1 { text-align: center; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>🎓 Generator testów GPT-5</h1>
+  <label>Temat testu:</label>
+  <input id="topic" placeholder="np. Historia Polski">
+  
+  <label>Poziom trudności:</label>
+  <select id="difficulty">
+    <option value="łatwy">Łatwy</option>
+    <option value="średni">Średni</option>
+    <option value="trudny">Trudny</option>
+  </select>
+  
+  <label>Liczba pytań:</label>
+  <input id="count" type="number" value="5" min="1" max="20">
+
+  <button onclick="generateTest()">Generuj test</button>
+  <pre id="output" style="white-space:pre-wrap;margin-top:20px;"></pre>
+</div>
+
+<script>
+const API_KEY = "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"; 
+const API_URL = "https://api.openai.com/v1/chat/completions";
+const MODEL_NAME = "gpt-5"; 
+
+async function generateTest() {
+  const topic = document.getElementById("topic").value.trim();
+  const difficulty = document.getElementById("difficulty").value;
+  const count = parseInt(document.getElementById("count").value);
+  const output = document.getElementById("output");
+
+  if (!topic) {
+    alert("Podaj temat testu!");
+    return;
+  }
+
+  output.textContent = "⏳ Generowanie pytań...";
+
+  const systemPrompt = `
+Jesteś asystentem edukacyjnym. Tworzysz testy w formacie JSON.
+Zwróć dokładnie taki format (bez komentarzy ani tekstu poza JSON-em):
+
+[
+  {
+    "pytanie": "tekst pytania",
+    "odpowiedzi": ["A", "B", "C", "D"],
+    "poprawna": "A"
+  }
+]
+`;
+
+  const userQuery = `Stwórz ${count} pytań testowych o temacie "${topic}" na poziomie ${difficulty}.`;
+
+  const payload = {
+    model: MODEL_NAME,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userQuery }
+    ],
+    temperature: 0.8,
+    response_format: { type: "json_object" }
+  };
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content;
+    if (!text) throw new Error("Brak treści z modelu");
+
+    const questions = JSON.parse(text);
+    output.textContent = "✅ Test wygenerowany:\n\n" + JSON.stringify(questions, null, 2);
+  } catch (err) {
+    console.error(err);
+    output.textContent = "❌ Błąd podczas generowania: " + err.message;
+  }
+}
+</script>
+</body>
+</html>
